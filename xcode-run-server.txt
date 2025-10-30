@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# Xcode Run Script to start local DB (optional) and Node server for demos.
+# Place this at repo_root/scripts/xcode-run-server.sh and make it executable:
+# chmod +x scripts/xcode-run-server.sh
+#
+# Usage: Add a "Run Script" build phase in Xcode and invoke:
+# ${PROJECT_DIR}/../scripts/xcode-run-server.sh
+# (adjust the path based on where the script sits relative to your Xcode project)
+
+set -euo pipefail
+
+# --- configuration (edit if needed) ---
+# Relative path from this script to the Node project root (default: repo root)
+NODE_PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Which npm script to run to start the server (must exist in package.json)
+START_SCRIPT="dev"        # change to "start" if you use npm run start for production
+
+# Healthcheck endpoint the app exposes (optional). The script will skip starting if already running.
+HEALTH_URL="http://localhost:3000/health"  # edit if your app uses another port/path
+
+# Where to write server logs (so Xcode doesn't block and you can inspect)
+LOG_FILE="/tmp/xcode-node-server.log"
+
+# --- helper fns ---
+log() { printf "%s\n" "$*"; }
+
+# Try to discover repo root more robustly if inside Xcode: allow override via env
+if [ -n "${XCODE_PROJECT_DIR-}" ]; then
+  # If Xcode sets PROJECT_DIR, use it. (Xcode sets PROJECT_DIR or PROJECT_DIR is equivalent.)
+  NODE_PROJECT_ROOT="${XCODE_PROJECT_DIR}"
+fi
+
+log "[xcode-run-server] project root: $NODE_PROJECT_ROOT"
+
+# 1) Start DB via docker compose if a compose file exists and docker is installed
+if command -v docker >/dev/null 2>&1 && [ -f "${NODE_PROJECT_ROOT}/docker-compose.yml" ]; then
+  log "[xcode-run-server] docker & docker-compose.yml found, attempting to start DB services..."
+  # Use docker compose (works with both docker-compose and docker compose)
+  if docker compose version >/dev/null 2>&1; then
+    (cd "${NODE_PROJECT_ROOT}" && docker compose up -d)
+  elif command -v docker-compose >/dev/null 2>&1; then
+    (cd "${NODE_PROJECT_ROOT}" && docker-compose up -d)
+  else
+    log "[xcode-run-server] docker compose not available - skipping DB startup"
+  fi
+else
+  log "[xcode-run-server] no docker-compose.yml or docker not available - skipping DB startup"
+fi
+
+# 2) If server already running (health endpoint), skip starting
+if command -v curl >/dev/null 2>&1; then
+  if curl -fsS --max-time 2 "${HEALTH_URL}" >/dev/null 2>&1; then
+    log "[xcode-run-server] server already healthy at ${HEALTH_URL} — skipping start"
+    exit 0
+  fi
+fi
+
+# 3) Ensure Node is available. Try nvm first (common on dev machines), then system node.
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  # shellcheck disable=SC1090
+  source "$HOME/.nvm/nvm.sh"
+  log "[xcode-run-server] loaded nvm"
+fi
+
+if command -v node >/dev/null 2>&1; then
+  NODE_BIN="$(command -v node)"
+  NPM_BIN="$(dirname "$NODE_BIN")/npm"
+  log "[xcode-run-server] node found at ${NODE_BIN}"
+else
+  log "[xcode-run-server] ERROR: node is not installed or not on PATH. Install Node (nvm, Homebrew) and try again."
+  exit 1
+fi
+
+# 4) Start the app in the background (detached), write logs to LOG_FILE
+cd "${NODE_PROJECT_ROOT}"
+
+# Install deps if node_modules missing (fast path). Comment out if you prefer manual installation.
+if [ ! -d node_modules ]; then
+  if command -v pnpm >/dev/null 2>&1 && [ -f pnpm-lock.yaml ]; then
+    log "[xcode-run-server] installing deps with pnpm..."
+    pnpm install
+  else
+    log "[xcode-run-server] installing deps with npm..."
+    npm ci
+  fi
+fi
+
+# Start the app using chosen npm script. Use nohup & disown to avoid blocking Xcode.
+log "[xcode-run-server] starting Node app with npm run ${START_SCRIPT} (logs -> ${LOG_FILE})"
+# Use cross-platform PORT from .env if your project uses it; Xcode can set env vars in scheme.
+nohup env NODE_ENV=development npm run "${START_SCRIPT}" > "${LOG_FILE}" 2>&1 &
+
+# Give the server a few seconds and perform a quick health check
+sleep 2
+if command -v curl >/dev/null 2>&1; then
+  if curl -fsS --max-time 2 "${HEALTH_URL}" >/dev/null 2>&1; then
+    log "[xcode-run-server] server started and healthy"
+  else
+    log "[xcode-run-server] server start attempted; check ${LOG_FILE} for details"
+  fi
+else
+  log "[xcode-run-server] started server; curl not available to health-check"
+fi
+
+exit 0
