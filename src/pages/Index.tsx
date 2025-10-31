@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Users, Calendar, TrendingUp, CheckCircle, Clock, ArrowRight } from "lucide-react";
+import { MapPin, ArrowRight } from "lucide-react";
 import type { User } from '@supabase/supabase-js';
 
 const Index = () => {
@@ -11,30 +11,46 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already logged in
+    // If a Supabase user is already signed in, route based on stored role (if present)
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       if (user) {
-        navigate("/dashboard");
+        const savedRole = localStorage.getItem('role');
+        if (savedRole === "customer") navigate("/customer");
+        else navigate("/dashboard");
       }
     };
     checkUser();
 
-    // Set up auth state listener
+    // Listen for auth changes and respect stored role
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        navigate("/dashboard");
+        const savedRole = localStorage.getItem('role');
+        if (savedRole === "customer") navigate("/customer");
+        else navigate("/dashboard");
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const goToCustomerPortal = () => {
+    // user chose: "I need service"
+    localStorage.setItem("role", "customer");
+    navigate("/customer");
+  };
+
+  const goToManagerFlow = () => {
+    // user chose: "I'm running a service"
+    // set role to manager and send to the sign-in page (or dashboard if you prefer)
+    localStorage.setItem("role", "manager");
+    navigate("/auth");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
-      {/* Hero Section */}
       <section className="container mx-auto px-4 py-16 text-center">
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="flex items-center justify-center w-20 h-20 mx-auto mb-8 rounded-full bg-primary/10">
@@ -45,127 +61,54 @@ const Index = () => {
             Landscape Job
             <span className="text-primary"> Organizer</span>
           </h1>
-          
+
           <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-            Mobile-first job management system that replaces group chats with streamlined, 
-            auditable workflows for landscape crews.
+            Two simple choices: request a service, or run the service. Pick one to continue.
           </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="text-left p-6">
+              <CardHeader>
+                <CardTitle className="text-xl">Do you need service?</CardTitle>
+                <CardDescription>Customers: request lawn care, attach photos, and choose a date.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Use the customer portal to request services without signing up for the management interface.
+                </p>
+                <div className="flex justify-end">
+                  <Button onClick={goToCustomerPortal} size="lg">Go to Customer Portal</Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="text-left p-6">
+              <CardHeader>
+                <CardTitle className="text-xl">Are you running a service?</CardTitle>
+                <CardDescription>Managers: sign in to access the dispatch dashboard and schedule jobs.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <p className="text-sm text-muted-foreground mb-4">
+                  If you're managing the work (dispatch, scheduling, crew check-ins), sign in to continue.
+                </p>
+                <div className="flex justify-end">
+                  <Button onClick={goToManagerFlow} size="lg" variant="outline">Manager Sign In</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-8">
             {!user ? (
-              <>
-                <Button asChild size="lg" className="text-lg px-8">
-                  <Link to="/auth">
-                    Get Started
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Link>
-                </Button>
-                <Button variant="outline" size="lg" className="text-lg px-8">
-                  Learn More
-                </Button>
-              </>
-            ) : (
-              <Button asChild size="lg" className="text-lg px-8">
-                <Link to="/dashboard">
-                  Go to Dashboard
+              <Button asChild size="md" className="text-lg px-6">
+                <Link to="/auth">
+                  Quick Sign In
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Everything Your Crew Needs</h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            From geofenced check-ins to QuickBooks exports, streamline every aspect of your landscape business.
-          </p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Card className="text-center">
-            <CardHeader>
-              <MapPin className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>Geofenced Check-ins</CardTitle>
-              <CardDescription>
-                GPS-enforced location verification ensures crews are on-site before starting work
-              </CardDescription>
-            </CardHeader>
-          </Card>
-          
-          <Card className="text-center">
-            <CardHeader>
-              <Clock className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>Time Tracking</CardTitle>
-              <CardDescription>
-                Accurate start/stop timers with automatic duration calculations and performance analytics
-              </CardDescription>
-            </CardHeader>
-          </Card>
-          
-          <Card className="text-center">
-            <CardHeader>
-              <CheckCircle className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>Photo Documentation</CardTitle>
-              <CardDescription>
-                Before/after photos with GPS metadata replace group chat workflows
-              </CardDescription>
-            </CardHeader>
-          </Card>
-          
-          <Card className="text-center">
-            <CardHeader>
-              <TrendingUp className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>Auto-Population</CardTitle>
-              <CardDescription>
-                ML-powered field suggestions based on historical data with confidence scoring
-              </CardDescription>
-            </CardHeader>
-          </Card>
-          
-          <Card className="text-center">
-            <CardHeader>
-              <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>Crew Management</CardTitle>
-              <CardDescription>
-                Role-based access for crew members, managers, and accountants
-              </CardDescription>
-            </CardHeader>
-          </Card>
-          
-          <Card className="text-center">
-            <CardHeader>
-              <Calendar className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>QuickBooks Integration</CardTitle>
-              <CardDescription>
-                Automated Journal Entry CSV exports for seamless accounting workflows
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="container mx-auto px-4 py-16">
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-12 text-center">
-            <h2 className="text-3xl font-bold mb-4">Ready to Streamline Your Operations?</h2>
-            <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
-              Join landscape professionals who've eliminated manual workflows and improved their bottom line.
-            </p>
-            {!user && (
-              <Button asChild size="lg" className="text-lg px-8">
-                <Link to="/auth">
-                  Start Your Free Trial
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
       </section>
     </div>
   );

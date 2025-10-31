@@ -35,7 +35,7 @@ const CustomerPortalPage = () => {
     );
   }
 
-  return <CustomerPortal customerInfo={customerInfo} />;
+    return <CustomerPortal customerInfo={customerInfo} />;
 };
 
 export default CustomerPortalPage;

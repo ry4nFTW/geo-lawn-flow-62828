@@ -43,6 +43,8 @@ const Dashboard = () => {
   useEffect(() => {
     // Check for username in localStorage
     const savedUsername = localStorage.getItem('username');
+    const savedRole = localStorage.getItem('role') || 'manager';
+
     if (!savedUsername) {
       navigate("/auth");
       return;
@@ -50,16 +52,22 @@ const Dashboard = () => {
     
     setUsername(savedUsername);
     
-    // Create a mock profile for the user
+    // Create a mock profile for the user (respect stored role)
     setProfile({
       id: '1',
       user_id: '1',
       display_name: savedUsername,
       avatar_url: null,
-      role: 'manager',
+      role: savedRole,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     });
+
+    // If the stored role is 'customer', redirect them to the customer portal
+    if (savedRole === 'customer') {
+      navigate('/customer');
+      return;
+    }
     
     setIsLoading(false);
   }, [navigate]);
@@ -100,6 +108,7 @@ const Dashboard = () => {
 
   const handleSignOut = () => {
     localStorage.removeItem('username');
+    localStorage.removeItem('role');
     navigate('/auth');
   };
 
@@ -123,7 +132,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-      <DashboardHeader 
+      <DashboardHeader
         profile={profile}
         userEmail={username}
         onSignOut={handleSignOut}
@@ -132,7 +141,7 @@ const Dashboard = () => {
       <main className="container mx-auto px-4 py-8 space-y-8">
         <DashboardStats jobs={jobs} />
         
-        {profile?.role === 'accountant' ? (
+        {profile?.role === 'manager' ? (
           <AnalyticsDashboard />
         ) : (
           <JobsList jobs={jobs} canEdit={canEdit} />

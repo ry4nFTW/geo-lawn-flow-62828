@@ -1,0 +1,3 @@
+    // In /src/components/manager/ManagerSettings.tsx
+    const ManagerSettings = () => { /* ... */ };
+    export default ManagerSettings;

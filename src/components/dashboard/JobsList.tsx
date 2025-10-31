@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { JobEditor } from "@/components/job/JobEditor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,8 +33,11 @@ interface JobsListProps {
 }
 
 export const JobsList = ({ jobs, canEdit }: JobsListProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("all");
+    const [showJobEditor, setShowJobEditor] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0); // trigger refetch after save
+    const [editingJobId, setEditingJobId] = useState<string | null>(null);
 
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = 
@@ -69,11 +73,18 @@ export const JobsList = ({ jobs, canEdit }: JobsListProps) => {
             </p>
           </div>
           {canEdit && (
-            <Button className="bg-primary hover:bg-primary/90">
+            <Button
+              className="bg-primary hover:bg-primary/90"
+              onClick={() => {
+                setEditingJobId(null); // ensure new job mode
+                setShowJobEditor(true);
+              }}
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Job
             </Button>
           )}
+          
         </div>
         
         <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -141,6 +152,56 @@ export const JobsList = ({ jobs, canEdit }: JobsListProps) => {
           </div>
         )}
       </CardContent>
+          {showJobEditor && (
+            <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded shadow-lg w-full max-w-2xl z-60">
+                <div className="flex justify-between items-center p-3 border-b">
+                  <h4 className="font-semibold">Create New Job</h4>
+                  <Button variant="ghost" onClick={() => setShowJobEditor(false)}>
+                    Close
+                  </Button>
+                </div>
+
+                <div className="p-4">
+                  <JobEditor
+                    jobId={null}
+                    onSaved={() => {
+                      setShowJobEditor(false);
+                      setRefreshKey((prev) => prev + 1); // trigger re-fetch
+                    }}
+                    onCancel={() => setShowJobEditor(false)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          {showJobEditor && (
+            <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
+              <div className="bg-white rounded shadow-lg w-full max-w-2xl z-50">
+                <div className="flex justify-between items-center p-3 border-b">
+                  <h4 className="font-semibold">
+                    {editingJobId ? "Edit Job" : "Create New Job"}
+                  </h4>
+                  <Button variant="ghost" onClick={() => setShowJobEditor(false)}>Close</Button>
+                </div>
+
+                {/* 👇 Hook in your JobEditor component here */}
+                <JobEditor
+                  jobId={editingJobId}
+                  customerId={null} // or supply a selected customer if you have one
+                  onSaved={() => {
+                    setShowJobEditor(false);
+                    setEditingJobId(null);
+                    setRefreshKey(prev => prev + 1); // ✅ trigger re-fetch
+                  }}
+                  onCancel={() => {
+                    setShowJobEditor(false);
+                    setEditingJobId(null);
+                  }}
+                />
+              </div>
+            </div>
+          )}
     </Card>
   );
 };

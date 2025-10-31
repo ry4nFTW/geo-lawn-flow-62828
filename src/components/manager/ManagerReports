@@ -1,0 +1,6 @@
+// src/components/manager/ManagerReports.tsx
+const ManagerReports = () => {
+  // ... component logic
+};
+
+export default ManagerReports; // Or export default function ManagerReports() { ... }
