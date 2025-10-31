@@ -1,0 +1,4 @@
+    function UserSettingsComponent() {
+      // ... component logic
+    }
+    export default UserSettingsComponent;

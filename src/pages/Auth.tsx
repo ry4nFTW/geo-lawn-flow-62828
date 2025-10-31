@@ -13,10 +13,12 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user is already logged in
+    // If a username is already saved locally, route to the saved role destination
     const savedUsername = localStorage.getItem('username');
+    const savedRole = localStorage.getItem('role');
     if (savedUsername) {
-      navigate("/dashboard");
+      if (savedRole === "customer") navigate("/customer");
+      else navigate("/dashboard");
     }
   }, [navigate]);
 
@@ -32,15 +34,18 @@ const Auth = () => {
       return;
     }
 
-    // Save username to localStorage
+    // Persist username locally (demo flow). Role should have been set by the landing page.
     localStorage.setItem('username', username.trim());
-    
+    const role = localStorage.getItem('role') || 'manager';
+
     toast({
       title: "Welcome!",
-      description: `Signed in as ${username.trim()}`,
+      description: `Signed in as ${username.trim()} (${role})`,
     });
-    
-    navigate("/dashboard");
+
+    // Navigate to manager dashboard after signing in
+    if (role === "customer") navigate("/customer");
+    else navigate("/dashboard");
   };
 
   return (
@@ -50,33 +55,26 @@ const Auth = () => {
           <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10">
             <MapPin className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Landscape Job Organizer</h1>
-          <p className="text-muted-foreground mt-2">Mobile-first job management for landscape crews</p>
+          <h1 className="text-3xl font-bold tracking-tight">Manager Sign In</h1>
+          <p className="text-muted-foreground mt-2">Enter a username to continue to the management dashboard.</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Welcome</CardTitle>
-            <CardDescription>
-              Enter your username to get started
-            </CardDescription>
+            <CardTitle>Sign In</CardTitle>
+            <CardDescription>Provide a display name for the demo session</CardDescription>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSignIn} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
-                  required
-                />
+              <div>
+                <Label>Username</Label>
+                <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Your name or email" />
               </div>
-              <Button type="submit" className="w-full">
-                Sign In
-              </Button>
+
+              <div className="flex justify-end">
+                <Button type="submit">Continue</Button>
+              </div>
             </form>
           </CardContent>
         </Card>
