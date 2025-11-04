@@ -1,3 +1,4 @@
+//src/components/dashboard/JobsList.tsx
 import { useState } from "react";
 import { JobEditor } from "@/components/job/JobEditor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
